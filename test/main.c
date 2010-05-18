@@ -28,12 +28,16 @@ void blink(void)
 
 ISR(INT2_vect)
 {
+  unsigned char test = 0;
   sbi(PORTD, PD6);
-  receive();
-  cbi(PORTD, PD6);
+  rfm_real_ready();
+	test = rfm_command(0xB000);
+  //receive();
   rfm_command(0xCA81);			// set FIFO mode
 	rfm_command(0x82C8);			// RX on
 	rfm_command(0xCA83);
+	_delay_ms(500);
+	cbi(PORTD, PD6);
 	sbi(GIFR, INTF2);
 }
 
