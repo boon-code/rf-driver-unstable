@@ -5,6 +5,8 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <util/delay.h>
+#include <avr/sleep.h>
+
 
 #include "global.h"
 
@@ -28,16 +30,21 @@ void blink(void)
 
 ISR(INT2_vect)
 {
+  static unsigned char tmp = 0;
   unsigned char test = 0;
-  sbi(PORTD, PD6);
   rfm_real_ready();
 	test = rfm_command(0xB000);
   //receive();
   rfm_command(0xCA81);			// set FIFO mode
 	rfm_command(0x82C8);			// RX on
 	rfm_command(0xCA83);
-	_delay_ms(500);
-	cbi(PORTD, PD6);
+	
+	if(tmp & 1)
+	  sbi(PORTD, PD6);
+	else
+	  cbi(PORTD, PD6);
+	
+	++tmp;
 	sbi(GIFR, INTF2);
 }
 
@@ -78,7 +85,11 @@ int main(void)
 
 	while(1)
 	{
-	  
+	  sleep_enable();
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_cpu();
+    sleep_disable();
+    
 	}
 }
 

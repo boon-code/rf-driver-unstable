@@ -9,10 +9,6 @@ include userconfig.mk
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
 OPT = 1
 
-# List any extra directories to look for include files here.
-#     Each directory must be seperated by a space.
-EXTRAINCDIRS = 
-
 CSTANDARD = -std=gnu99
 
 # Compiler flags.
@@ -28,7 +24,6 @@ CFLAGS += -O$(OPT)
 CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -Wall -Wstrict-prototypes
 CFLAGS += -Wa,-adhlns=$(<:.c=.lst)
-CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
 CFLAGS += -DF_OSC=$(F_OSC)
 
