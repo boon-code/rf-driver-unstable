@@ -11,14 +11,11 @@
 #include "global.h"
 
 #include "uart.h"
-#include "rfm12.h"
-
-void send(void);
-void receive(void);
+#include "button.h"
 
 void blink(void)
 {
-  unsigned char i = 20;
+  unsigned char i = 50;
   for(; i > 0; --i)
   {
     sbi(PORTD, PD6);
@@ -28,91 +25,63 @@ void blink(void)
   }
 }
 
-ISR(INT2_vect)
+ISR(BUTTON_ISR_NAME)
 {
-  static unsigned char tmp = 0;
-  unsigned char test = 0;
-  rfm_real_ready();
-	test = rfm_command(0xB000);
-  //receive();
-  rfm_command(0xCA81);			// set FIFO mode
-	rfm_command(0x82C8);			// RX on
-	rfm_command(0xCA83);
-	
-	if(tmp & 1)
-	  sbi(PORTD, PD6);
-	else
-	  cbi(PORTD, PD6);
-	
-	++tmp;
-	sbi(GIFR, INTF2);
+  unsigned char result;
+  sbi(PORTD, PD6);
+  result = button_begintest(1800);
+  
+  cbi(PORTD, PD6);
+  
+  if(result & _BV(0))
+  {
+  	PORTA &= ~(_BV(PA2) | _BV(PA3));
+  }
+  
+  if(result & _BV(1))
+  {
+    PORTA |= _BV(PA3);
+  } 
+  
+  if(result & _BV(2))
+  {
+    PORTA |= _BV(PA2);
+  }
+  
+  _delay_ms(50);
+  button_endtest();
 }
 
 int main(void)
 {
-	DDRD = _BV(PD6);
-	PORTD = _BV(PD6);
-	
-	uart_init(9600);
-	uart_write_str("s \n");
-	
-	blink();
-	
-	rfm_init();
-	uart_write_str("init\n");
-	rfm_frequency(433.92);
-	rfm_bandwidth(4, 1, 4);
-	rfm_baudrate(19200);
-	rfm_power(4, 0);
-	
-  uart_transmit('\n');
-  uart_write_shex(rfm_command(0x0000));
-  uart_transmit('\n');
+  // all output ports
+  DDRD = _BV(PD6);
+  DDRA = (_BV(PA2) | _BV(PA3));
+  PORTA = (_BV(PA2) | _BV(PA3));
+  PORTD = (_BV(PD2) | _BV(PD6));
   
-  blink();
+  _delay_ms(1000);
   
-  // rising edge
-  MCUCSR &= ~(_BV(ISC2));
-  GICR |= _BV(INT2);
+  PORTA &= ~(_BV(PA2) | _BV(PA3));
+  PORTD &= ~(_BV(PD6));
   
-  rfm_command(0xCA81);			// set FIFO mode
-	rfm_command(0x82C8);			// RX on
-	rfm_command(0xCA83);
-	
-	sbi(GIFR, INTF2);
+  // low level generates interrupt
+  //GICR |= _BV(INT0);   // enable INT0
+  
+  // ISC2 = 0 -> falling edge
+  
+  button_init();
   
   sei();
-
-	while(1)
-	{
-	  sleep_enable();
+  
+  while(1)
+  {
+    sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_cpu();
     sleep_disable();
-    
-	}
-}
-
-void receive(void)
-{	
-  unsigned char test[32];
+    blink();
+  }
   
-	rfm_simple_rx(test, 32);
-	
-	//sbi(PORTD, PD6);
-	
-	for(unsigned char i = 0; i < 32; ++i)
-	{
-	  uart_transmit(test[i]);
-	}
-	uart_transmit('\n');
-	
-	//cbi(PORTD, PD6);
+  return 0;
 }
-
-void send(void)
-{
-  unsigned char test[]="Dies ist ein 433MHz Test !!!\n   ";	
-	rfm_simple_tx(test, 32);
-}
-
