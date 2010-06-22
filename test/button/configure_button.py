@@ -25,12 +25,17 @@ def check_count(value):
 def set_pins_list(obj, *pins):
     return [i.read() for i in pins]
 
+def set_mask(obj, pins):
+    pins = pins.read()
+    return "(" + " | ".join(["_BV(" + i + ")" for i in pins]) + ")"
+
 def choose_pins(obj, p, c):
     pins = ports[p.read()]
     pl = []
     for i in range(c.read()):
         pl.append(cfg.choose("PIN_%s" % i, pins))
-    cfg.bind("PINS", set_pins_list, *pl)
+    PINS = cfg.bind("PINS", set_pins_list, *pl)
+    cfg.bind("MASK", set_mask, PINS)
 
 COUNT = cfg.expr("COUNT", check=check_count)
 PORT = cfg.choose("PORT", pnames)
