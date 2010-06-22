@@ -3,30 +3,39 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
+#include "button.h"
+
 #define sbi(reg, bit) reg |= (1<<bit)
 #define cbi(reg, bit) reg &= ~(1<<bit)
 
-#define NUM_BUTTONS 3
-#define READ_DELAY_US 5
+<?py:
+def create_mask():
+    echo(",".join(["_BV(%s)" % i for i in BUTTON_PINS]))
+?>
 
+volatile unsigned char g_button = 0x00;
+
+static void read_delay(void)
+{
+  _delay_us(BUTTON_READ_DELAY);
+}
 
 unsigned char buttons_test(unsigned int times)
 {
-  unsigned int but[BUTTON_COUNT];
+  unsigned char masks[BUTTON_COUNT] = {<?py:create_mask()?>};
+  unsigned int but[BUTTON_COUNT] = {<?py:echo(",".join(['0' for i in range(BUTTON_COUNT)]))?>};
   unsigned char result = 0x0;
-  
-  for(unsigned char i = 0; i < BUTTON_COUNT; ++i)
-  {
-    but[i] = 0;
-  }
+  BUTTON_DDR |= BUTTON_MASK;
   
   for(unsigned int i = 0; i < times; ++i)
   {
+
     for(unsigned char j = 0; j < BUTTON_COUNT; ++j)
     {
-      BUTTON_DDR = _BV(j);
-      _delay_us(READ_DELAY_US);
-      if((BUTTON_PIN & _BV(PD2)) == 0)
+      BUTTON_DDR &= ~(BUTTON_MASK);
+      BUTTON_DDR |= masks[j];
+      read_delay();
+      if((BUTTON_INT_PIN & _BV(BUTTON_PINT)) == 0)
         ++but[j];
     }
   }
@@ -36,33 +45,22 @@ unsigned char buttons_test(unsigned int times)
     if(but[i] > times/2)
       result |= _BV(i);
   }
+  
+  g_button = result;
+  
   return result;
 }
 
-ISR(INT0_vect)
+void button_init(void)
 {
-  unsigned char result;
-  sbi(PORTD, PD6);
-  result = buttons_test(2500);
+  BUTTON_DDR |= BUTTON_MASK;
+  cbi(BUTTON_INT_DDR, _BV(BUTTON_PINT));
+  sbi(BUTTON_INT_PORT, _BV(BUTTON_PINT));
+  BUTTON_PORT &= ~(BUTTON_MASK);
   
-  BUTTON_DDR = _BV(PC0) | _BV(PC1) | _BV(PC2);
+  BUTTON_SET_INT_SENSE
   
-  cbi(PORTD, PD6);
-  
-  if(result & _BV(PC0))
-  {
-  }
-  
-  if(result & _BV(PC1))
-  {
-  } 
-  
-  if(result & _BV(PC2))
-  {
-  }
-  
-  _delay_ms(200);
-  
-  sbi(GIFR, INTF2);
+  sbi(GIFR, BUTTON_INT_FLAG);
+  sbi(GICR, BUTTON_INTERRUPT);
 }
 

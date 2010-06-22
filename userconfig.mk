@@ -13,7 +13,8 @@ SRC = 	src/rfm12.c \
 	test/button/button.c \
 	test/main.c
 HEADER = src/rfm12.h.in \
-	src/spi.h.in
+	src/spi.h.in \
+	test/button/button.h.in
 
 INCLUDES = -I"./src" -I"./test" -I"./test/button"
 TARGET = main

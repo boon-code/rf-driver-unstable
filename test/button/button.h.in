@@ -1,0 +1,11 @@
+#ifndef _BUTTONS_MOD_
+#define _BUTTONS_MOD_
+
+#define BUTTON_ISR_NAME <?py:echo(BUTTON_INTERRUPT + '_vect')?>
+
+extern volatile unsigned char g_button;
+
+void button_init(void);
+unsigned char buttons_test(unsigned int times);
+
+#endif
