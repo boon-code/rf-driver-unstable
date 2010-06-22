@@ -3,6 +3,7 @@ FORMAT = ihex
 
 include userconfig.mk
 
+PROCESSED_HEADER=$(HEADER:.h.in=.h)
 
 # Optimization level, can be [0, 1, 2, 3, s]. 
 # 0 = turn off optimization. s = optimize for size.
@@ -95,7 +96,7 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 
 
 # Default target.
-all: begin gccversion sizebefore build sizeafter finished end
+all: begin config $(PROCESSED_HEADER) gccversion sizebefore build sizeafter finished end
 
 build: elf hex eep lss sym
 
@@ -139,7 +140,7 @@ gccversion :
 
 
 # Program the device.  
-program: $(TARGET).hex $(TARGET).eep
+program: all
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
 
 # Convert ELF to COFF for use in debugging / simulating in AVR Studio or VMLAB.
@@ -202,12 +203,13 @@ extcoff: $(TARGET).elf
 %.o : %.c
 	@echo
 	@echo $(MSG_COMPILING) $<
-	$(CC) -c $(INCLUDES) $(ALL_CFLAGS) $< -o $@ 
+	$(BUILD_SYSTEM) eval $< -o $(<:.c=.bsout.c)
+	$(CC) -c $(INCLUDES) $(ALL_CFLAGS) $(shell $(BUILD_SYSTEM) def $<) $(<:.c=.bsout.c) -o $@
 
 
 # Compile: create assembler files from C source files.
 %.s : %.c
-	$(CC) -S $(INCLUDES) $(ALL_CFLAGS) $< -o $@
+	$(CC) -S $(INCLUDES) $(ALL_CFLAGS) $(shell $(BUILD_SYSTEM) def $<) $< -o $@
 
 
 # Assemble: create object files from assembler source files.
@@ -215,6 +217,9 @@ extcoff: $(TARGET).elf
 	@echo
 	@echo $(MSG_ASSEMBLING) $<
 	$(CC) -c $(ALL_ASFLAGS) $< -o $@
+
+%.h: %.h.in
+	$(BUILD_SYSTEM) eval -v -a $<
 
 git-clean: clean
 	@find . -name \*~
@@ -227,7 +232,7 @@ clean: begin clean_list finished end
 term:
 	$(AVRDUDE) $(AVRDUDE_FLAGS) -t
 
-clean_list :
+clean_list:
 	@echo
 	@echo $(MSG_CLEANING)
 	$(REMOVE) $(TARGET).hex
@@ -246,8 +251,22 @@ clean_list :
 	$(REMOVE) $(SRC:.c=.s)
 	$(REMOVE) $(SRC:.c=.d)
 	$(REMOVE) .dep/*
+	$(REMOVE) $(SRC:.c=.bsout.c)
+	rm -f $(PROCESSED_HEADER)
+	find . -name cachedconfig.pickle\* -exec rm "{}" ";"
 
+config:
+	@echo "start config"
+	$(BUILD_SYSTEM) cfg ./src ./test
 
+delete-all-config:
+	find . -name userconfig.pickle\* -exec rm "{}" ";"
+
+reconfig: clean
+	$(BUILD_SYSTEM) cfg . -c $(MOD)
+
+show-mods:
+	$(BUILD_SYSTEM) cfg -s ./src
 
 # Include the dependency files.
 -include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
