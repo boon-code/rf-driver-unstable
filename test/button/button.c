@@ -13,6 +13,12 @@ def create_mask():
     echo(",".join(["_BV(%s)" % i for i in BUTTON_PINS]))
 ?>
 
+
+/*************************************************************************************
+ what about just waking the cpu and then supporting some polling mechanism?
+  then all that interrupt stuff would be in here... 
+**************************************************************************************/
+
 volatile unsigned char g_button = 0x00;
 
 static void read_delay(void)
@@ -20,12 +26,16 @@ static void read_delay(void)
   _delay_us(BUTTON_READ_DELAY);
 }
 
-unsigned char buttons_test(unsigned int times)
+unsigned char button_begintest(unsigned int times)
 {
   unsigned char masks[BUTTON_COUNT] = {<?py:create_mask()?>};
   unsigned int but[BUTTON_COUNT] = {<?py:echo(",".join(['0' for i in range(BUTTON_COUNT)]))?>};
   unsigned char result = 0x0;
-  BUTTON_DDR |= BUTTON_MASK;
+  
+  cbi(GICR, BUTTON_INTERRUPT);
+  sbi(GIFR, BUTTON_INT_FLAG);
+  
+  sei();
   
   for(unsigned int i = 0; i < times; ++i)
   {
@@ -46,9 +56,19 @@ unsigned char buttons_test(unsigned int times)
       result |= _BV(i);
   }
   
+  BUTTON_DDR &= ~(BUTTON_MASK);
   g_button = result;
   
   return result;
+}
+
+void button_endtest(void)
+{
+  cli();
+  
+  sbi(GICR, BUTTON_INTERRUPT);
+  BUTTON_DDR |= BUTTON_MASK;
+  sbi(GIFR, BUTTON_INT_FLAG);
 }
 
 void button_init(void)

@@ -1,7 +1,7 @@
 #include "spi.h"
 #include <avr/io.h>
 
-#ifdef SPI_USE_CS
+#ifdef ISPI_USE_CS
   #define spi_chip_select()   (SPI_PORT &= ~_BV(SPI_CS))
   #define spi_chip_release()  (SPI_PORT |= _BV(SPI_CS))
 #else
@@ -14,8 +14,13 @@ void spi_init_master(void)
 	unsigned char tmp = 0;
 	
 	// MOSI, SCK and CS (always output) are outputs, MISO is input others remain unchanged
-  SPI_DDR |= (_BV(SPI_MOSI) | _BV(SPI_SCK) | _BV(SPI_CS));
-  SPI_DDR &= ~(_BV(SPI_MISO));
+#ifdef ISPI_USE_CS
+  ISPI_DDR |= (_BV(ISPI_MOSI) | _BV(ISPI_SCK) | _BV(ISPI_CS));
+#else
+  ISPI_DDR |= (_BV(ISPI_MOSI) | _BV(ISPI_SCK));
+#endif
+  
+  ISPI_DDR &= ~(_BV(ISPI_MISO));
   
   spi_chip_release();
   

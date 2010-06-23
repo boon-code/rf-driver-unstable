@@ -6,6 +6,7 @@
 extern volatile unsigned char g_button;
 
 void button_init(void);
-unsigned char buttons_test(unsigned int times);
+unsigned char button_begintest(unsigned int times);
+void button_endtest(void);
 
 #endif
