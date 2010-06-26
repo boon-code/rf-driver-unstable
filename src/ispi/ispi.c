@@ -1,32 +1,38 @@
 #include "spi.h"
 #include <avr/io.h>
 
-#ifdef ISPI_USE_CS
-  #define spi_chip_select()   (SPI_PORT &= ~_BV(SPI_CS))
-  #define spi_chip_release()  (SPI_PORT |= _BV(SPI_CS))
-#else
-  #define spi_chip_select()
-  #define spi_chip_release()
-#endif
+#define spi_chip_select()   (ISPI_PORT &= ~_BV(ISPI_CS))
+#define spi_chip_release()  (ISPI_PORT |= _BV(ISPI_CS))
 
-void spi_init_master(void)
+static ispi_callback spi_cbfunc = 0;
+static volatile unsigned char spi_count = 2;
+static unsigned char* spi_data = 0;
+
+ISR(SPI_STC)
+{
+  if(spi_count < 2)
+  {
+  
+  }
+}
+
+void spi_init_master(ispi_callback func)
 {
 	unsigned char tmp = 0;
 	
 	// MOSI, SCK and CS (always output) are outputs, MISO is input others remain unchanged
-#ifdef ISPI_USE_CS
   ISPI_DDR |= (_BV(ISPI_MOSI) | _BV(ISPI_SCK) | _BV(ISPI_CS));
-#else
-  ISPI_DDR |= (_BV(ISPI_MOSI) | _BV(ISPI_SCK));
-#endif
   
   ISPI_DDR &= ~(_BV(ISPI_MISO));
   
   spi_chip_release();
   
-  // enable SPI, master, clock rate F_OSC/128, 
+  spi_cbfunc = func;
+  spi_data = buffer;
+  
+  // enable SPI, master, clock rate F_OSC/4, 
   // CPOL = 0 CPHA = 0
-  SPCR = _BV(SPE) | _BV(MSTR);
+  SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPIE);
   
   // dummy read...
   tmp = SPSR;

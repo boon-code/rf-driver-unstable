@@ -1,9 +1,7 @@
 #ifndef _SPI_MODULE_H_
 #define _SPI_MODULE_H_
 
-#include "config.h"
-
-#define SPI_DDR DDRB
+/*#define SPI_DDR DDRB
 
 #define SPI_PORT	PORTB
 #define SPI_PIN   PINB
@@ -11,9 +9,11 @@
 #define SPI_MOSI	PB5
 #define SPI_MISO	PB6
 #define SPI_SCK	  PB7
+*/
 
+typedef void (*ispi_callback)(unsigned char hval, unsigned char lval);
 
-void spi_init_master(void);
+void spi_init_master(ispi_callback func);
 unsigned char spi_btransfer(const unsigned char data);
 unsigned short spi_wtransfer(const unsigned short data);
 
