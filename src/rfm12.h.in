@@ -3,14 +3,7 @@
 
 #include <avr/io.h>
 
-// user options...
-#include "config.h"
-
-#ifdef RF_FREQUENCY_433
-  #define RF_FREQUENCY_MAX 3903
-  #define RF_FREQUENCY_MIN 96
-  #define FREQUENCY_TO_USHORT(f) ((unsigned short)((f-430.0)/0.0025))
-#endif
+#define FREQUENCY_TO_USHORT(f) ((unsigned short)((f-430.0)/0.0025))
 
 unsigned short rfm_command(unsigned short cmd);
 

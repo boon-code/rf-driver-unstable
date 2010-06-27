@@ -30,27 +30,16 @@ void blink(void)
 
 ISR(INT2_vect)
 {
-  static unsigned char tmp = 0;
-  unsigned char test = 0;
-  rfm_real_ready();
-	test = rfm_command(0xB000);
-  //receive();
-  rfm_command(0xCA81);			// set FIFO mode
-	rfm_command(0x82C8);			// RX on
-	rfm_command(0xCA83);
-	
-	if(tmp & 1)
-	  sbi(PORTD, PD6);
-	else
-	  cbi(PORTD, PD6);
-	
-	++tmp;
+	sbi(PORTA, PA2);
+	sbi(PORTD, PD6);
+  send();
 	sbi(GIFR, INTF2);
 }
 
 int main(void)
 {
 	DDRD = _BV(PD6);
+	DDRA = (_BV(PA2) | _BV(PA3));
 	PORTD = _BV(PD6);
 	
 	uart_init(9600);
@@ -71,25 +60,21 @@ int main(void)
   
   blink();
   
-  // rising edge
   MCUCSR &= ~(_BV(ISC2));
   GICR |= _BV(INT2);
-  
-  rfm_command(0xCA81);			// set FIFO mode
-	rfm_command(0x82C8);			// RX on
-	rfm_command(0xCA83);
-	
-	sbi(GIFR, INTF2);
+  // rising edge
   
   sei();
 
 	while(1)
 	{
-	  sleep_enable();
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    sleep_cpu();
-    sleep_disable();
-    
+		sbi(PORTD, PD6);
+    _delay_ms(1000);
+    cbi(PORTD, PD6);
+    rfm_command(0xCA81);
+    rfm_command(0x8238);
+    rfm_command(0xB8AA);
+    _delay_ms(1000);
 	}
 }
 
@@ -112,7 +97,7 @@ void receive(void)
 
 void send(void)
 {
-  unsigned char test[]="Dies ist ein 433MHz Test !!!\n   ";	
-	rfm_simple_tx(test, 32);
+  unsigned char test[]="Neuer Test!\0";	
+	rfm_simple_tx(test, 11);
 }
 

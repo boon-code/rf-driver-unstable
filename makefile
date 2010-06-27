@@ -219,7 +219,7 @@ extcoff: $(TARGET).elf
 	$(CC) -c $(ALL_ASFLAGS) $< -o $@
 
 %.h: %.h.in
-	$(BUILD_SYSTEM) eval -v -a $<
+	$(BUILD_SYSTEM) eval -v $< -o $@
 
 git-clean: clean
 	@find . -name \*~

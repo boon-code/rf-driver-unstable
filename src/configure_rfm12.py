@@ -10,4 +10,4 @@ def set_frequency(obj, freq):
     elif freq == 868:
         cfg.bind("FREQUENCY_868", dummy_call, FREQUENCY)
 
-cfg.bind("BLA", set_frequency, FREQUENCY)
+cfg.bind(None, set_frequency, FREQUENCY)

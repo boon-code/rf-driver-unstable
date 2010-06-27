@@ -1,0 +1,8 @@
+#ifndef _TIMER_0_MOD_
+#define _TIMER_0_MOD_
+
+void timer0_init(void);
+void timer0_restart(void);
+void timer0_stop(void);
+
+#endif

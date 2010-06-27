@@ -11,9 +11,7 @@
 #define SPI_SCK	  PB7
 */
 
-typedef void (*ispi_callback)(unsigned char hval, unsigned char lval);
-
-void spi_init_master(ispi_callback func);
+void spi_init_master(void);
 unsigned char spi_btransfer(const unsigned char data);
 unsigned short spi_wtransfer(const unsigned short data);
 
