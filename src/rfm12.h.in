@@ -5,6 +5,8 @@
 
 #define FREQUENCY_TO_USHORT(f) ((unsigned short)((f-430.0)/0.0025))
 
+typedef unsigned char packet_t[10];
+
 unsigned short rfm_command(unsigned short cmd);
 
 void rfm_init(void);

@@ -18,14 +18,141 @@
 #endif
 */
 
-#define ST_IDLE 0
-#define ST_TX 1
-#define ST_RX 2
+enum estatus
+{
+  ST_IDLE,
+  ST_TX,
+  ST_RX
+};
 
-unsigned char rfm_arq_count = 0;
-unsigned char* rfm_packet;
-unsigned char rfm_count = 0;
+static unsigned char arq_count = 0;
 static volatile unsigned char g_status = ST_IDLE;
+
+#define CODE_N 5
+#define CODE_K 2
+#define CODE_PER_BYTE 4
+#define CODE_K_MASK 0x3
+#define CODE_N_MASK 0x1f
+#define DIV8(var) (var >> 3)
+#define MOD8(var) (var & 0x7)
+#define USR_DAT_SIZE 12
+#define PACKET_SIZE 30
+
+typedef char data_t[USR_DAT_SIZE];
+
+static char packet_buffer[40];
+static unsigned char packet_count = 0;
+static char code_table[4] = {0x0, 0x7, 0x1c, 0x1b};
+
+
+static void create_packet(data_t data)
+{
+  unsigned char bypos = 0;
+  unsigned char nbipos = 0;
+  unsigned char cbipos = 0;
+  
+  for(unsigned char i = 0; i < PACKET_SIZE; ++i)
+  {
+    packet_buffer[i] = 0x0;
+  }
+  
+  for(unsigned char i = 0; i < USR_DAT_SIZE; ++i)
+  {
+    unsigned char data_reg = (unsigned char)(data[i]);
+    for(unsigned char j = 0; j < CODE_PER_BYTE; ++j)
+    {
+      unsigned char code_reg = code_table[(data_reg & CODE_K_MASK)];
+      unsigned char next_byte_count = 0;
+      
+      cbipos = nbipos;
+      nbipos += CODE_N;
+      next_byte_count = DIV8(nbipos);
+      nbipos = MOD8(nbipos);
+      
+      packet_buffer[bypos] |= (code_reg << cbipos);
+      
+      if(next_byte_count)
+      {
+        ++bypos;
+        packet_buffer[bypos] |= (code_reg >> (8 - cbipos));
+      }
+      
+      data_reg >>= CODE_K;
+    }
+  }
+}
+
+
+static unsigned char decode_item(unsigned char item)
+{
+  unsigned char weight = 0xff; // unreachable value
+  unsigned char result = 0xff;
+  for(unsigned char i = 0; i < 4; ++i)
+  {
+    unsigned char diff = code_table[i] ^ item;
+    unsigned char ones = 0;
+    
+    for(unsigned char j = 0; j < CODE_N; ++j, diff >>= 1)
+    {
+      if(diff & 0x1)
+      {
+        ++ones;
+      }
+    }
+    
+    if(ones < weight)
+    {
+      result = i;
+      weight = ones;
+    }
+    else if(ones == weight)
+    {
+      // conflict
+      result = 0xff;
+    }
+  }
+  
+  return result;
+}
+
+
+static unsigned char decode_packet(void)
+{
+  unsigned char bypos = 0;
+  unsigned char nbipos = 0;
+  unsigned char cbipos = 0;
+  
+  for(unsigned char i = 0; i < USR_DAT_SIZE; ++i)
+  {
+    unsigned char data_reg = 0x0;
+    for(unsigned char j = 0; j < CODE_PER_BYTE; ++j)
+    {
+      unsigned char code_reg = (packet_buffer[bypos] >> cbipos) & CODE_N_MASK;
+      unsigned char decode_reg = 0x0;
+      
+      nbipos = cbipos + CODE_N;
+      
+      if(DIV8(nbipos))
+      {
+        ++bypos;
+        code_reg |= ((packet_buffer[bypos] << (8 - cbipos)) & CODE_N_MASK);
+      }
+      
+      decode_reg = decode_item(code_reg);
+      
+      if(decode_reg == 0xff)
+        return 0x00;
+      
+      data_reg |= (decode_reg << (j * CODE_K));
+      
+      cbipos = MOD8(nbipos);
+    }
+    packet_buffer[i] = data_reg;
+  }
+  
+  return 0x1;
+}
+
 
 /*
 ISR(INT2_vect)
@@ -36,14 +163,14 @@ ISR(INT2_vect)
 			break;
 		
 		case ST_TX:
-			if(spi_wtransfer(0x0000) & 0x8000)
+			if(spi_wtransfer(HFC_STATUS) & 0x8000)
 			{
 				spi_wtransfer(HFC_TX | rfm_packet[rfm_count++]);
 			}
 			
 			if(rfm_count >= 38)
 			{
-				rfm_command(0x8208);			// TX off
+				rfm_command(HFC_POWER | HF_DISABLE_CLKOUT | HF_ENABLE_CRYSTAL);			// TX off
 				g_status = ST_IDLE;
 			}
 				
@@ -57,16 +184,16 @@ ISR(INT2_vect)
 			
 			if(rfm_count >= 32)
 			{
-				rfm_command(0x8208);			// RX off
+				rfm_command(HFC_POWER | HF_DISABLE_CLKOUT | HF_ENABLE_CRYSTAL);			// RX off
 				g_status = ST_IDLE;
 			}
 			
 			break;
 	}
 }
-*/
 
-void rfm_dotx(unsigned char* pack)
+
+void rfm_packet_tx(packet_t* packet)
 {
 	while(g_status != ST_IDLE);
 	rfm_packet = pack;
@@ -84,6 +211,7 @@ ISR(TIMER0_COMP_vect)
 	timer0_stop();
 	timer0_restart();
 }
+*/
 
 unsigned short rfm_command(unsigned short cmd)
 {
